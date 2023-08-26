@@ -1,10 +1,13 @@
+import 'dart:isolate';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:my_music_app/core/service_locator.dart';
-import 'package:my_music_app/features/music_player/domain/models/track_model.dart';
+import 'package:my_music_app/features/music_player/data/services/file_picker_impl.dart';
 import 'package:my_music_app/features/music_player/presentation/screens/detail_screen.dart';
 
+final cubit = HomeCubit(const HomeState([]));
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -15,50 +18,68 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int currentIndex = 0;
+
   @override
   void initState() {
     super.initState();
-    repository.pickMp3File();
+    complexWork();
   }
-
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        image: DecorationImage(
-          image: AssetImage("assets/images/background_image.jpg",),
-          fit: BoxFit.cover
-        )
-      ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: StreamBuilder<List<Track>>(
-          stream: repository.stream,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.active) {
-              final data = snapshot.data!;
-              audioServiceImpl.playlistLoad(repository);
-              return ListView.builder(itemBuilder: (context, index) {
-                final track = data[index];
-                return MusicCart(
-                  child: ListTile(
-                    title: Text(track.name, maxLines: 1,overflow: TextOverflow.ellipsis,style: TextStyle(color: currentIndex == index ? Colors.yellow : Colors.black),),
-                    subtitle: Text(track.duration.durationFormatter, style: TextStyle(color: currentIndex == index ? Colors.yellow : Colors.black),),
-                    onTap: () async {
-                      await audioServiceImpl.onMusicTap(index);
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => DetailPage(track: track)));
-                    },
-                    leading: SizedBox(height: 60, width: 60, child: track.image != null ? Image.memory(track.image!,) : Image.asset("assets/images/default.png"),),
+    return Scaffold(
+        body: StreamBuilder<HomeState>(
+      stream: cubit.stream,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.active) {
+          final data = snapshot.data!.tracks;
+          audioServiceImpl.playlistLoad(cubit);
+          return ListView.builder(
+            itemBuilder: (context, index) {
+              final track = data[index];
+              return MusicCart(
+                child: ListTile(
+                  title: Text(
+                    track.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        color: currentIndex == index
+                            ? Colors.yellow
+                            : Colors.black),
                   ),
-                );
-              },itemCount: data.length,);
-            }
-            return const LoadingPage();
-          },
-        )
-      ),
-    );
+                  subtitle: Text(
+                    track.duration.durationFormatter,
+                    style: TextStyle(
+                        color: currentIndex == index
+                            ? Colors.yellow
+                            : Colors.black),
+                  ),
+                  onTap: () async {
+                    await audioServiceImpl.onMusicTap(index);
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => DetailPage(track: track)));
+                  },
+                  leading: SizedBox(
+                    height: 60,
+                    width: 60,
+                    child: track.image != null
+                        ? Image.memory(
+                            track.image!,
+                          )
+                        : Image.asset("assets/images/default.png"),
+                  ),
+                ),
+              );
+            },
+            itemCount: data.length,
+          );
+        }
+        return const LoadingPage();
+      },
+    ));
   }
 }
 
@@ -83,28 +104,28 @@ class _MusicCartState extends State<MusicCart> {
         color: Colors.transparent,
         child: Stack(
           children: [
-            BackdropFilter(filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20), child: Container(),),
+            BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              child: Container(),
+            ),
             Container(
               decoration: BoxDecoration(
                   color: Colors.transparent,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Colors.blue.withOpacity(0.16),
-                    Colors.blue.withOpacity(0.05),
-                  ]
-                )
-              ),
+                  gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Colors.blue.withOpacity(0.16),
+                        Colors.blue.withOpacity(0.05),
+                      ])),
             ),
-           widget.child
+            widget.child
           ],
         ),
       ),
     );
   }
 }
-
 
 class LoadingPage extends StatelessWidget {
   const LoadingPage({super.key});
@@ -120,9 +141,23 @@ class LoadingPage extends StatelessWidget {
   }
 }
 
-extension on Duration {
-  String get  durationFormatter {
-    String formattedDuration = '${(inMinutes % 60).toString().padLeft(2, '0')}:${(inSeconds % 60).toString().padLeft(2, '0')}';
+extension DurationToString on Duration {
+  String get durationFormatter {
+    String formattedDuration =
+        '${(inMinutes % 60).toString().padLeft(2, '0')}:${(inSeconds % 60).toString().padLeft(2, '0')}';
     return formattedDuration;
   }
+}
+
+void complexWork() async {
+  final receivePort = ReceivePort();
+  BackgroundIsolateBinaryMessenger.ensureInitialized(
+      ServicesBinding.rootIsolateToken!);
+  await Isolate.spawn((message) {
+    cubit.pickMp3File(message);
+  }, [receivePort.sendPort, ServicesBinding.rootIsolateToken!]);
+
+  receivePort.listen((message) {
+    cubit.emit(HomeState(message));
+  });
 }
