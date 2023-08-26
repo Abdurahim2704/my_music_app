@@ -56,8 +56,8 @@ class _DetailPageState extends State<DetailPage> {
         ),
       ),
       child: GlassMorphic(
-        beginColor: Color(0xff353F54).withOpacity(0.3),
-        endColor: Color(0xff222834).withOpacity(0.3),
+        beginColor: const Color(0xff353F54).withOpacity(0.3),
+        endColor: const Color(0xff222834).withOpacity(0.3),
         child: Scaffold(
           appBar: AppBar(
             elevation: 0,
@@ -130,7 +130,7 @@ class _DetailPageState extends State<DetailPage> {
                   ),
                 ),
               ),
-              Expanded(child: SizedBox()),
+              const Expanded(child: SizedBox()),
               const SizedBox(
                 height: 10,
               ),

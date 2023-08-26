@@ -3,7 +3,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
-final _borderRadius = BorderRadius.all(Radius.circular(0));
+const _borderRadius = BorderRadius.all(Radius.circular(0));
 
 class GlassMorphic extends StatelessWidget {
   final child;
@@ -12,7 +12,7 @@ class GlassMorphic extends StatelessWidget {
 
   const GlassMorphic({
     super.key,
-    this.child = null,
+    this.child,
     required this.beginColor,
     required this.endColor,
   });

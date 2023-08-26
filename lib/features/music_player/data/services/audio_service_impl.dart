@@ -1,5 +1,5 @@
 import 'package:just_audio/just_audio.dart';
-import 'package:my_music_app/features/music_player/domain/repositories/files_repository.dart';
+import 'package:my_music_app/features/music_player/data/services/file_picker_impl.dart';
 
 import '../../domain/models/track_model.dart';
 
@@ -11,8 +11,8 @@ class AudioServiceImpl{
   AudioServiceImpl({required this.tracks});
 
 
-  void playlistLoad(FilesRepository filePicker) async {
-    tracks = filePicker.tracks;
+  void playlistLoad(HomeCubit cubit) async {
+    tracks = cubit.state.tracks;
     final audioSource = ConcatenatingAudioSource(children: [
       for (var track in tracks)
         AudioSource.file(track.path)
